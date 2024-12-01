@@ -1,38 +1,43 @@
 use std::env;
 use std::fs;
-use std::path::PathBuf;
 use reqwest;
 use std::io::Write;
+use std::path::Path;
 
-pub fn extract_day_from_path() -> Result<u32, String> {
-    let current_dir = env::current_dir().map_err(|e| e.to_string())?;
-    let path = current_dir.to_str().ok_or("Invalid path")?;
-    
-    path.split(std::path::MAIN_SEPARATOR)
-        .find(|segment| segment.starts_with("day"))
-        .and_then(|day_segment| day_segment[3..].parse::<u32>().ok())
-        .ok_or_else(|| "Unable to extract day from path. Make sure you're running from a 'dayXX' directory.".to_string())
+pub fn extract_day_from_filename() -> Result<u32, String> {
+    let args: Vec<String> = env::args().collect();
+    let exe_name = args.get(0)
+        .ok_or("Unable to get executable name")?;
+    let path = Path::new(exe_name);
+    let filename = path.file_name()
+        .and_then(|name| name.to_str())
+        .ok_or("Unable to get filename")?;
+
+    if filename.starts_with("day") {
+        filename[3..].parse::<u32>()
+            .map_err(|_| "Invalid day number in filename".to_string())
+    } else {
+        Err("This is not a day executable".to_string())
+    }
 }
 
 
 pub async fn get_input() -> Result<String, Box<dyn std::error::Error>> {
-    let day = extract_day_from_path()?;
+    let day = extract_day_from_filename()?;
     let year = 2024; 
     let session = read_session_cookie()?;
     let input = fetch_or_read_input(year, day, &session).await?;
     Ok(input)
 }
 
+
 fn read_session_cookie() -> Result<String, Box<dyn std::error::Error>> {
-    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    while !path.join(".aoc_session").exists() {
-        if !path.pop() {
-            return Err("Could not find .aoc_session file".into());
-        }
+    match env::var("AOC_SESSION") {
+        Ok(cookie) => Ok(cookie.trim().to_string()),
+        Err(_) => Err("AOC_SESSION environment variable not set".into()),
     }
-    let cookie = fs::read_to_string(path.join(".aoc_session"))?;
-    Ok(cookie.trim().to_string())
 }
+
 
 async fn fetch_or_read_input(year: u32, day: u32, session: &str) -> Result<String, Box<dyn std::error::Error>> {
     let filename = format!("day_{:02}_input.txt", day);
