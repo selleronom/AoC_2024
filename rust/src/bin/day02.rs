@@ -1,12 +1,13 @@
-use std::fs;
+use advent_of_code_2024::utils::helpers::get_input;
+use advent_of_code_2024::day02::{part1, part2};
+use std::error::Error;
 
-mod day02 {
-    pub mod part1;
-    pub mod part2;
-}
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    let input_data = get_input().await?;
 
-fn main() {
-    let input = fs::read_to_string("../../input/day02.txt").expect("Failed to read input");
-    println!("Part 1: {}", day02::part1::solve(&input));
-    println!("Part 2: {}", day02::part2::solve(&input));
+    println!("Part 1: {}", part1::solve(&input_data));
+    println!("Part 2: {}", part2::solve(&input_data));
+
+    Ok(())
 }
