@@ -25,7 +25,7 @@ fn is_safe_with_dampener(line: &str) -> bool {
             .filter(|(i, _)| *i != skip_idx)
             .map(|(_, &x)| x)
             .collect();
-        
+
         if is_safe_report(&modified) {
             return true;
         }
@@ -43,7 +43,7 @@ fn is_safe_report(levels: &[i32]) -> bool {
 
     for i in 0..levels.len() - 1 {
         let diff = levels[i + 1] - levels[i];
-        
+
         // Check if difference is within valid range (1-3)
         if diff.abs() < 1 || diff.abs() > 3 {
             return false;
@@ -63,7 +63,7 @@ fn is_safe_report(levels: &[i32]) -> bool {
                 Some(false) => (),
             }
         } else {
-            return false;  // diff == 0 is not allowed
+            return false; // diff == 0 is not allowed
         }
     }
 

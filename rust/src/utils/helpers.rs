@@ -1,35 +1,34 @@
+use reqwest;
 use std::env;
 use std::fs;
-use reqwest;
 use std::io::Write;
 use std::path::Path;
 
 pub fn extract_day_from_filename() -> Result<u32, String> {
     let args: Vec<String> = env::args().collect();
-    let exe_name = args.get(0)
-        .ok_or("Unable to get executable name")?;
+    let exe_name = args.get(0).ok_or("Unable to get executable name")?;
     let path = Path::new(exe_name);
-    let filename = path.file_name()
+    let filename = path
+        .file_name()
         .and_then(|name| name.to_str())
         .ok_or("Unable to get filename")?;
 
     if filename.starts_with("day") {
-        filename[3..].parse::<u32>()
+        filename[3..]
+            .parse::<u32>()
             .map_err(|_| "Invalid day number in filename".to_string())
     } else {
         Err("This is not a day executable".to_string())
     }
 }
 
-
 pub async fn get_input() -> Result<String, Box<dyn std::error::Error>> {
     let day = extract_day_from_filename()?;
-    let year = 2024; 
+    let year = 2024;
     let session = read_session_cookie()?;
     let input = fetch_or_read_input(year, day, &session).await?;
     Ok(input)
 }
-
 
 fn read_session_cookie() -> Result<String, Box<dyn std::error::Error>> {
     if let Ok(cookie) = env::var("AOC_SESSION") {
@@ -49,9 +48,11 @@ fn read_session_cookie() -> Result<String, Box<dyn std::error::Error>> {
     Err("AOC_SESSION not found in environment or .env file".into())
 }
 
-
-
-async fn fetch_or_read_input(year: u32, day: u32, session: &str) -> Result<String, Box<dyn std::error::Error>> {
+async fn fetch_or_read_input(
+    year: u32,
+    day: u32,
+    session: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
     let filename = format!("day_{:02}_input.txt", day);
     if let Ok(input) = fs::read_to_string(&filename) {
         return Ok(input);

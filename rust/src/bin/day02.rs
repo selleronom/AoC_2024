@@ -1,5 +1,5 @@
-use advent_of_code_2024::utils::helpers::get_input;
 use advent_of_code_2024::day02::{part1, part2};
+use advent_of_code_2024::utils::helpers::get_input;
 use std::error::Error;
 
 #[tokio::main]

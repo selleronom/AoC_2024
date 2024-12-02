@@ -6,10 +6,11 @@ fn calculate_similarity_score(input_data: &str) -> i32 {
 
     // Parse input and populate left_list and right_count
     for line in input_data.lines() {
-        let numbers: Vec<i32> = line.split_whitespace()
+        let numbers: Vec<i32> = line
+            .split_whitespace()
             .map(|s| s.parse().unwrap())
             .collect();
-        
+
         if numbers.len() == 2 {
             left_list.push(numbers[0]);
             *right_count.entry(numbers[1]).or_insert(0) += 1;
@@ -17,7 +18,8 @@ fn calculate_similarity_score(input_data: &str) -> i32 {
     }
 
     // Calculate similarity score
-    left_list.iter()
+    left_list
+        .iter()
         .map(|&num| num * right_count.get(&num).unwrap_or(&0))
         .sum()
 }

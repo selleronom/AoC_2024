@@ -20,7 +20,7 @@ fn is_safe_report(line: &str) -> bool {
 
     for i in 0..levels.len() - 1 {
         let diff = levels[i + 1] - levels[i];
-        
+
         // Check if difference is within valid range (1-3)
         if diff.abs() < 1 || diff.abs() > 3 {
             return false;
@@ -40,7 +40,7 @@ fn is_safe_report(line: &str) -> bool {
                 Some(false) => (),
             }
         } else {
-            return false;  // diff == 0 is not allowed
+            return false; // diff == 0 is not allowed
         }
     }
 
