@@ -32,11 +32,23 @@ pub async fn get_input() -> Result<String, Box<dyn std::error::Error>> {
 
 
 fn read_session_cookie() -> Result<String, Box<dyn std::error::Error>> {
-    match env::var("AOC_SESSION") {
-        Ok(cookie) => Ok(cookie.trim().to_string()),
-        Err(_) => Err("AOC_SESSION environment variable not set".into()),
+    if let Ok(cookie) = env::var("AOC_SESSION") {
+        return Ok(cookie.trim().to_string());
     }
+
+    let env_path = Path::new(".env");
+    if env_path.exists() {
+        let contents = fs::read_to_string(env_path)?;
+        for line in contents.lines() {
+            if let Some(cookie) = line.strip_prefix("AOC_SESSION=") {
+                return Ok(cookie.trim().to_string());
+            }
+        }
+    }
+
+    Err("AOC_SESSION not found in environment or .env file".into())
 }
+
 
 
 async fn fetch_or_read_input(year: u32, day: u32, session: &str) -> Result<String, Box<dyn std::error::Error>> {
