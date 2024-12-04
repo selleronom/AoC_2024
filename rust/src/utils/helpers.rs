@@ -1,3 +1,4 @@
+use chrono::prelude::*;
 use reqwest;
 use std::env;
 use std::fs;
@@ -23,7 +24,8 @@ pub fn extract_day_from_filename() -> Result<u32, String> {
 }
 
 pub async fn get_input() -> Result<String, Box<dyn std::error::Error>> {
-    let day = extract_day_from_filename()?;
+    let today = Local::now();
+    let day: u32 = today.day();
     let year = 2024;
     let session = read_session_cookie()?;
     let input = fetch_or_read_input(year, day, &session).await?;
