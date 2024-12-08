@@ -37,7 +37,7 @@ class AoCClient:
 
         return response.text.strip()
 
-    def submit_solution(self, year: int, day: int, level: int, answer: str) -> str:
+    def submit_solution(self, year: int, day: int, level: int, answer: str) -> dict:
         """
         Submit solution to AoC website.
         Returns 'ok' if the answer was correct, or an error message if incorrect.
@@ -51,14 +51,39 @@ class AoCClient:
         soup = BeautifulSoup(response.text, "html.parser")
         message = soup.find("article").get_text().strip()
 
+        # Extract wait time from message if present
+        wait_time = 0
+        if "please wait" in message.lower():
+            if "wait 5 minutes" in message:
+                wait_time = 5 * 60
+            elif "wait one minute" in message:
+                wait_time = 60
+            # Add more patterns if needed for other wait time messages
+
         if "That's the right answer" in message:
-            return "ok"
+            return {
+                "status": "ok",
+                "message": message,
+                "wait_time": 0
+            }
         elif "That's not the right answer" in message:
-            return f"error: wrong answer. {message}"
+            return {
+                "status": "wrong_answer",
+                "message": message,
+                "wait_time": wait_time
+            }
         elif "You gave an answer too recently" in message:
-            return f"error: too many attempts. {message}"
+            return {
+                "status": "too_frequent",
+                "message": message,
+                "wait_time": wait_time
+            }
         else:
-            return f"error: unknown response. {message}"
+            return {
+                "status": "unknown",
+                "message": message,
+                "wait_time": wait_time
+            }
 
     def fetch_leaderboard(
         self, year: int, day: int

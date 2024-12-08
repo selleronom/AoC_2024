@@ -7,10 +7,10 @@ class OpenAIClient:
     def __init__(self, api_key: str):
         self.client = OpenAI(api_key=api_key)
 
-    def get_solution(self, challenge: str, part: int) -> str:
+    def get_solution(self, challenge: str, part: int, model: str = "gpt-4o") -> str:
         """Get solution suggestion from OpenAI."""
         completion = self.client.chat.completions.create(
-            model="gpt-4o",
+            model=model,
             messages=[
                 {
                     "role": "system",

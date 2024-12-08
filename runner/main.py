@@ -16,6 +16,7 @@ class AoCRunner:
         self.openai_client = OpenAIClient(os.environ.get("OPENAI_API_KEY"))
         self.rust_manager = RustManager("../rust")
         self.results_dir = "results"
+        self.models = ["gpt-4", "o1-mini", "o1-preview"]
 
         if not os.path.exists(self.results_dir):
             os.makedirs(self.results_dir)
@@ -42,35 +43,52 @@ class AoCRunner:
         while attempt < max_attempts:
             attempt += 1
             print(f"Attempt {attempt}/{max_attempts} to solve Part {part}")
-
+            for model in self.models:
+                print(f"Trying with model: {model}")
             # Get solution from OpenAI if the part is not already solved
-            try:
-                solution_code = self.openai_client.get_solution(challenge_text, part)
+                try:
+                    solution_code = self.openai_client.get_solution(challenge_text, part)
 
-                # Update Rust project
-                self.rust_manager.create_day_directory(day, part)
-                self.rust_manager.update_solution(day, part, solution_code)
-                self.rust_manager.update_cargo_toml(day, part, solution_code)
+                    # Update Rust project
+                    self.rust_manager.create_day_directory(day, part)
+                    self.rust_manager.update_solution(day, part, solution_code)
+                    self.rust_manager.update_cargo_toml(day, part, solution_code)
 
-                # Execute and submit
-                answer = self.rust_manager.execute_solution(day, part)
-                print(f"Part {part} solution: {answer}")
+                    # Execute and submit
+                    answer = self.rust_manager.execute_solution(day, part)
+                    print(f"Part {part} solution: {answer}")
 
-                result = self.aoc_client.submit_solution(year, day, part, answer)
-                print(f"Day {day}, Part {part} solution submitted. Result: {result}")
+                    result = self.aoc_client.submit_solution(year, day, part, answer)
+                    print(f"Day {day}, Part {part} solution submitted. Result: {result['status']} - {result['message']}")
 
-                if result == "ok":  # Assuming a success structure
-                    self.mark_part_as_solved(year, day, part)
-                    time.sleep(5)
-                    break
-                else:
-                    print("Solution not correct. Retrying...")
-                    time.sleep(60)
-            except Exception as e:
-                print(f"An error occurred: {e}. Retrying...")
+                    if result['status'] == "ok":
+                        self.mark_part_as_solved(year, day, part)
+                        return  # Exit function on success
 
-        else:
-            print(f"Failed to solve Part {part} after {max_attempts} attempts.")
+                    # Handle wait time
+                    wait_time = result['wait_time']
+                    if wait_time > 0:
+                        print(f"Waiting {wait_time} seconds before next attempt...")
+                        time.sleep(wait_time)
+
+                    # If wrong answer, try next model
+                    if result['status'] == "wrong_answer":
+                        continue
+
+                    if result['status'] == "unknown":
+                        break
+
+                except Exception as e:
+                    print(f"An error occurred with {model}: {e}")
+                    time.sleep(10)  # Short wait after error
+                    continue
+
+            print(f"All models failed for attempt {attempt}")
+            if attempt < max_attempts:
+                print("Waiting 60 seconds before next full attempt...")
+                time.sleep(60)
+
+        print(f"Failed to solve Part {part} after {max_attempts} attempts with all models.")
 
     def run(self):
         """Main execution flow."""
