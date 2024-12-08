@@ -85,13 +85,10 @@ class AoCClient:
                 "wait_time": wait_time
             }
 
-    def fetch_leaderboard(
-        self, year: int, day: int
-    ) -> Dict[str, List[Dict[str, Union[str, int]]]]:
+    def global_leaderboard_full(self, year: int, day: int) -> bool:
         """
         Fetch the leaderboard for a specific day.
-        Returns a dictionary with 'part1' and 'part2' lists containing leaderboard entries.
-        Each entry contains 'rank', 'time', 'score', and 'user' information.
+        Returns True if there are two entries with rank 100.
         """
         url = f"https://adventofcode.com/{year}/leaderboard/day/{day}"
         response = requests.get(url, cookies={"session": self.session_cookie})
@@ -100,31 +97,13 @@ class AoCClient:
             raise Exception(f"Failed to fetch leaderboard: HTTP {response.status_code}")
 
         soup = BeautifulSoup(response.text, "html.parser")
-        leaderboard = {"part1": [], "part2": []}
+        rank_100_count = 0
 
-        # Find the leaderboard entries
-        entries = soup.find_all("div", class_="leaderboard-entry")
+        for entry in soup.find_all("div", class_="leaderboard-entry"):
+            rank_elem = entry.find("span", class_="leaderboard-position")
+            if rank_elem and int(rank_elem.get_text().strip().replace(")", "")) == 100:
+                rank_100_count += 1
+                if rank_100_count == 2:
+                    return True
 
-        current_part = "part1"
-        for entry in entries:
-            # Check for part separator
-            if "---" in entry.get_text():
-                current_part = "part2"
-                continue
-
-        # Extract entry information
-        rank_elem = entry.find("span", class_="leaderboard-position")
-        time_elem = entry.find("span", class_="leaderboard-time")
-        score_elem = entry.find("span", class_="leaderboard-score")
-        user_elem = entry.find("span", class_="leaderboard-userphoto")
-
-        if all([rank_elem, time_elem, user_elem]):
-            entry_data = {
-                "rank": int(rank_elem.get_text().strip().replace(")", "")),
-                "time": time_elem.get_text().strip(),
-                "score": int(score_elem.get_text().strip()) if score_elem else None,
-                "user": user_elem.get("title", "Anonymous"),
-            }
-            leaderboard[current_part].append(entry_data)
-
-        return leaderboard
+        return False

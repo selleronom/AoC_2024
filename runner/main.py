@@ -58,6 +58,10 @@ class AoCRunner:
                     answer = self.rust_manager.execute_solution(day, part)
                     print(f"Part {part} solution: {answer}")
 
+                    while not self.aoc_client.global_leaderboard_full(year, day):
+                        print("Global leaderboard not yet full. Checking again in 30 seconds...")
+                        time.sleep(30)
+
                     result = self.aoc_client.submit_solution(year, day, part, answer)
                     print(f"Day {day}, Part {part} solution submitted. Result: {result['status']} - {result['message']}")
 
