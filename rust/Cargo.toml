@@ -54,6 +54,14 @@ path = "src/bin/day08_part1.rs"
 name = "day08_part2"
 path = "src/bin/day08_part2.rs"
 
+[[bin]]
+name = "day09_part1"
+path = "src/bin/day09_part1.rs"
+
+[[bin]]
+name = "day09_part2"
+path = "src/bin/day09_part2.rs"
+
 [package]
 name = "advent-of-code-2024"
 version = "0.1.0"
