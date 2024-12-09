@@ -1,6 +1,5 @@
 import requests
 from bs4 import BeautifulSoup
-from typing import List, Dict, Union
 import re
 
 
@@ -61,29 +60,21 @@ class AoCClient:
             # Add more patterns if needed for other wait time messages
 
         if "That's the right answer" in message:
-            return {
-                "status": "ok",
-                "message": message,
-                "wait_time": 0
-            }
+            return {"status": "ok", "message": message, "wait_time": 0}
         elif "That's not the right answer" in message:
             return {
                 "status": "wrong_answer",
                 "message": message,
-                "wait_time": wait_time
+                "wait_time": wait_time,
             }
         elif "You gave an answer too recently" in message:
             return {
                 "status": "too_frequent",
                 "message": message,
-                "wait_time": wait_time
+                "wait_time": wait_time,
             }
         else:
-            return {
-                "status": "unknown",
-                "message": message,
-                "wait_time": wait_time
-            }
+            return {"status": "unknown", "message": message, "wait_time": wait_time}
 
     def global_leaderboard_full(self, year: int, day: int) -> bool:
         """
