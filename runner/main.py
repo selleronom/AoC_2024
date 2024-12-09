@@ -43,11 +43,17 @@ class AoCRunner:
         while attempt < max_attempts:
             attempt += 1
             print(f"Attempt {attempt}/{max_attempts} to solve Part {part}")
+
+            # Reset Cargo.toml before each full attempt
+            self.rust_manager.reset_cargo_toml()
+
             for model in self.models:
                 print(f"Trying with model: {model}")
-            # Get solution from OpenAI if the part is not already solved
+                # Get solution from OpenAI if the part is not already solved
                 try:
-                    solution_code = self.openai_client.get_solution(challenge_text, part)
+                    solution_code = self.openai_client.get_solution(
+                        challenge_text, part
+                    )
 
                     # Update Rust project
                     self.rust_manager.create_day_directory(day, part)
@@ -59,27 +65,31 @@ class AoCRunner:
                     print(f"Part {part} solution: {answer}")
 
                     while not self.aoc_client.global_leaderboard_full(year, day):
-                        print("Global leaderboard not yet full. Checking again in 30 seconds...")
+                        print(
+                            "Global leaderboard not yet full. Checking again in 30 seconds..."
+                        )
                         time.sleep(30)
 
                     result = self.aoc_client.submit_solution(year, day, part, answer)
-                    print(f"Day {day}, Part {part} solution submitted. Result: {result['status']} - {result['message']}")
+                    print(
+                        f"Day {day}, Part {part} solution submitted. Result: {result['status']} - {result['message']}"
+                    )
 
-                    if result['status'] == "ok":
+                    if result["status"] == "ok":
                         self.mark_part_as_solved(year, day, part)
                         return  # Exit function on success
 
                     # Handle wait time
-                    wait_time = result['wait_time']
+                    wait_time = result["wait_time"]
                     if wait_time > 0:
                         print(f"Waiting {wait_time} seconds before next attempt...")
                         time.sleep(wait_time)
 
                     # If wrong answer, try next model
-                    if result['status'] == "wrong_answer":
+                    if result["status"] == "wrong_answer":
                         continue
 
-                    if result['status'] == "unknown":
+                    if result["status"] == "unknown":
                         break
 
                 except Exception as e:
@@ -92,7 +102,9 @@ class AoCRunner:
                 print("Waiting 60 seconds before next full attempt...")
                 time.sleep(60)
 
-        print(f"Failed to solve Part {part} after {max_attempts} attempts with all models.")
+        print(
+            f"Failed to solve Part {part} after {max_attempts} attempts with all models."
+        )
 
     def run(self):
         """Main execution flow."""

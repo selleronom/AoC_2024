@@ -114,6 +114,16 @@ class RustManager:
 
         print(f"Cargo.toml updated for Day {day_str}, Part {part}")
 
+    def reset_cargo_toml(self):
+        """Reset Cargo.toml to its git state."""
+        try:
+            subprocess.run(
+                ["git", "checkout", "Cargo.toml"], check=True, cwd=self.project_path
+            )
+            print("Successfully reset Cargo.toml to git state")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to reset Cargo.toml: {e}")
+
     def execute_solution(self, day: int, part: int) -> str:
         """Execute Rust solution and return output."""
         day_str = f"day{day:02d}_part{part}"
