@@ -66,6 +66,10 @@ path = "src/bin/day09_part2.rs"
 name = "day10_part2"
 path = "src/bin/day10_part2.rs"
 
+[[bin]]
+name = "day11_part2"
+path = "src/bin/day11_part2.rs"
+
 [package]
 name = "advent-of-code-2024"
 version = "0.1.0"
@@ -83,14 +87,20 @@ version = "*"
 
 [dependencies.reqwest]
 version = "*"
-features = [ "cookies",]
+features = ["cookies"]
 
 [dependencies.tokio]
 version = "*"
-features = [ "full",]
+features = ["full"]
 
 [dependencies.paste]
 version = "*"
 
 [dependencies.num]
+version = "*"
+
+[dependencies.num-bigint]
+version = "*"
+
+[dependencies.num-traits]
 version = "*"
