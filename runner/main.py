@@ -2,9 +2,11 @@ import os
 from datetime import datetime
 from aoc.client import AoCClient
 from oai.client import OpenAIClient
+from claude.client import ClaudeClient
 from rust.manager import RustManager
 from dotenv import load_dotenv
 import time
+from utils.solution import SolutionSet
 
 
 class AoCRunner:
@@ -14,12 +16,59 @@ class AoCRunner:
         load_dotenv()
         self.aoc_client = AoCClient(os.environ.get("AOC_SESSION"))
         self.openai_client = OpenAIClient(os.environ.get("OPENAI_API_KEY"))
+        self.claude_client = ClaudeClient(os.environ.get("ANTHROPIC_API_KEY"))
         self.rust_manager = RustManager("../rust")
         self.results_dir = "results"
-        self.models = ["gpt-4", "o1-mini", "o1-preview"]
+        self.models = ["gpt-4", "claude-3-opus-20240229", "o1-mini", "o1-preview"]
+        self.attempts_per_model = 3
 
         if not os.path.exists(self.results_dir):
             os.makedirs(self.results_dir)
+
+    def generate_and_test_solutions(
+        self, year: int, day: int, part: int, challenge_text: str
+    ) -> SolutionSet:
+        """Generate and test multiple solutions from each model"""
+        solution_set = SolutionSet()
+
+        for model in self.models:
+            for attempt in range(self.attempts_per_model):
+                try:
+                    # Get solution from AI model
+                    if model.startswith("claude"):
+                        solution_code = self.claude_client.get_solution(
+                            challenge_text, part
+                        )
+                    else:
+                        solution_code = self.openai_client.get_solution(
+                            challenge_text, part, model
+                        )
+
+                    # Create temporary files and update Rust project
+                    self.rust_manager.create_day_directory(day, part)
+                    self.rust_manager.update_solution(day, part, solution_code)
+                    self.rust_manager.update_cargo_toml(day, part, solution_code)
+
+                    # Execute solution
+                    try:
+                        result = self.rust_manager.execute_solution(day, part)
+                        solution_set.add_solution(model, solution_code, result)
+                        print(
+                            f"Model {model} (attempt {attempt + 1}) produced result: {result}"
+                        )
+                    except Exception as e:
+                        print(
+                            f"Execution failed for {model} (attempt {attempt + 1}): {e}"
+                        )
+                        solution_set.add_solution(model, solution_code, None)
+
+                except Exception as e:
+                    print(
+                        f"Failed to generate solution with {model} (attempt {attempt + 1}): {e}"
+                    )
+                    continue
+
+        return solution_set
 
     def has_solved_part(self, year: int, day: int, part: int) -> bool:
         """Check if a part has already been solved."""
@@ -40,6 +89,7 @@ class AoCRunner:
 
         max_attempts = 3
         attempt = 0
+
         while attempt < max_attempts:
             attempt += 1
             print(f"Attempt {attempt}/{max_attempts} to solve Part {part}")
@@ -47,64 +97,60 @@ class AoCRunner:
             # Reset Cargo.toml before each full attempt
             self.rust_manager.reset_cargo_toml()
 
-            for model in self.models:
-                print(f"Trying with model: {model}")
-                # Get solution from OpenAI if the part is not already solved
-                try:
-                    solution_code = self.openai_client.get_solution(
-                        challenge_text, part
-                    )
+            # Generate and test solutions from all models
+            solution_set = self.generate_and_test_solutions(
+                year, day, part, challenge_text
+            )
 
-                    # Update Rust project
-                    self.rust_manager.create_day_directory(day, part)
-                    self.rust_manager.update_solution(day, part, solution_code)
-                    self.rust_manager.update_cargo_toml(day, part, solution_code)
+            # Get most common result
+            most_common_result, count = solution_set.get_most_common_result()
 
-                    # Execute and submit
-                    answer = self.rust_manager.execute_solution(day, part)
-                    print(f"Part {part} solution: {answer}")
+            if most_common_result is None:
+                print("No valid solutions generated")
+                continue
 
-                    while not self.aoc_client.global_leaderboard_full(year, day):
-                        print(
-                            "Global leaderboard not yet full. Checking again in 30 seconds..."
-                        )
-                        time.sleep(30)
+            print(f"Most common result ({count} occurrences): {most_common_result}")
 
-                    result = self.aoc_client.submit_solution(year, day, part, answer)
+            # If we have a strong majority (more than 50% of successful solutions)
+            total_successful = sum(
+                1 for s in solution_set.solutions if s.result is not None
+            )
+            if count > total_successful / 2:
+                # Wait for leaderboard to fill
+                while not self.aoc_client.global_leaderboard_full(year, day):
                     print(
-                        f"Day {day}, Part {part} solution submitted. Result: {result['status']} - {result['message']}"
+                        "Global leaderboard not yet full. Checking again in 30 seconds..."
                     )
+                    time.sleep(30)
 
-                    if result["status"] == "ok":
-                        self.mark_part_as_solved(year, day, part)
-                        return  # Exit function on success
+                # Submit the most common result
+                result = self.aoc_client.submit_solution(
+                    year, day, part, most_common_result
+                )
+                print(f"Submission result: {result['status']} - {result['message']}")
 
-                    # Handle wait time
-                    wait_time = result["wait_time"]
-                    if wait_time > 0:
-                        print(f"Waiting {wait_time} seconds before next attempt...")
-                        time.sleep(wait_time)
+                if result["status"] == "ok":
+                    # Get the successful solution and save it
+                    winning_solution = solution_set.get_solution_with_result(
+                        most_common_result
+                    )
+                    self.rust_manager.update_solution(day, part, winning_solution.code)
+                    self.mark_part_as_solved(year, day, part)
+                    return
 
-                    # If wrong answer, try next model
-                    if result["status"] == "wrong_answer":
-                        continue
+                # Handle wait time
+                wait_time = result["wait_time"]
+                if wait_time > 0:
+                    print(f"Waiting {wait_time} seconds before next attempt...")
+                    time.sleep(wait_time)
+            else:
+                print("No clear majority solution found")
 
-                    if result["status"] == "unknown":
-                        break
-
-                except Exception as e:
-                    print(f"An error occurred with {model}: {e}")
-                    time.sleep(10)  # Short wait after error
-                    continue
-
-            print(f"All models failed for attempt {attempt}")
             if attempt < max_attempts:
                 print("Waiting 60 seconds before next full attempt...")
                 time.sleep(60)
 
-        print(
-            f"Failed to solve Part {part} after {max_attempts} attempts with all models."
-        )
+        print(f"Failed to solve Part {part} after {max_attempts} attempts.")
 
     def run(self):
         """Main execution flow."""
