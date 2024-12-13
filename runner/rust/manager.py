@@ -2,6 +2,9 @@ import os
 import subprocess
 import toml
 import utils.helpers as helpers
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class RustManager:
@@ -87,7 +90,7 @@ class RustManager:
         new_deps = helpers.extract_dependencies(solution)
         for dep, version in new_deps.items():
             # Convert underscores to hyphens in dependency names
-            dep_name = dep.replace('_', '-')
+            dep_name = dep.replace("_", "-")
             if dep_name not in dependencies:
                 dependencies[dep_name] = version
 
@@ -114,7 +117,7 @@ class RustManager:
         with open(cargo_path, "w") as f:
             toml.dump(cargo_data, f)
 
-        print(f"Cargo.toml updated for Day {day_str}, Part {part}")
+        logger.info(f"Cargo.toml updated for Day {day_str}, Part {part}")
 
     def reset_cargo_toml(self):
         """Reset Cargo.toml to its git state."""
@@ -122,9 +125,9 @@ class RustManager:
             subprocess.run(
                 ["git", "checkout", "Cargo.toml"], check=True, cwd=self.project_path
             )
-            print("Successfully reset Cargo.toml to git state")
+            logger.info("Successfully reset Cargo.toml to git state")
         except subprocess.CalledProcessError as e:
-            print(f"Failed to reset Cargo.toml: {e}")
+            logger.info(f"Failed to reset Cargo.toml: {e}")
 
     def execute_solution(self, day: int, part: int) -> str:
         """Execute Rust solution and return output."""

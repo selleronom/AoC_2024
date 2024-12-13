@@ -7,6 +7,9 @@ from rust.manager import RustManager
 from dotenv import load_dotenv
 import time
 from utils.solution import SolutionSet
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class AoCRunner:
@@ -19,7 +22,7 @@ class AoCRunner:
         self.claude_client = ClaudeClient(os.environ.get("ANTHROPIC_API_KEY"))
         self.rust_manager = RustManager("../rust")
         self.results_dir = "results"
-        self.models = ["gpt-4", "claude-3-opus-20240229", "o1-mini", "o1-preview"]
+        self.models = ["o1-mini", "claude-3-opus-20240229", "gpt-4", "o1-preview"]
         self.attempts_per_model = 3
 
         if not os.path.exists(self.results_dir):
@@ -53,17 +56,17 @@ class AoCRunner:
                     try:
                         result = self.rust_manager.execute_solution(day, part)
                         solution_set.add_solution(model, solution_code, result)
-                        print(
+                        logger.info(
                             f"Model {model} (attempt {attempt + 1}) produced result: {result}"
                         )
                     except Exception as e:
-                        print(
+                        logger.info(
                             f"Execution failed for {model} (attempt {attempt + 1}): {e}"
                         )
                         solution_set.add_solution(model, solution_code, None)
 
                 except Exception as e:
-                    print(
+                    logger.info(
                         f"Failed to generate solution with {model} (attempt {attempt + 1}): {e}"
                     )
                     continue
@@ -85,14 +88,14 @@ class AoCRunner:
 
     def solve_part(self, year: int, day: int, part: int, challenge_text: str):
         """Solve and submit a single part of the challenge."""
-        print(f"Solving part {part}...")
+        logger.info(f"Solving part {part}...")
 
         max_attempts = 3
         attempt = 0
 
         while attempt < max_attempts:
             attempt += 1
-            print(f"Attempt {attempt}/{max_attempts} to solve Part {part}")
+            logger.info(f"Attempt {attempt}/{max_attempts} to solve Part {part}")
 
             # Reset Cargo.toml before each full attempt
             self.rust_manager.reset_cargo_toml()
@@ -106,10 +109,12 @@ class AoCRunner:
             most_common_result, count = solution_set.get_most_common_result()
 
             if most_common_result is None:
-                print("No valid solutions generated")
+                logger.info("No valid solutions generated")
                 continue
 
-            print(f"Most common result ({count} occurrences): {most_common_result}")
+            logger.info(
+                f"Most common result ({count} occurrences): {most_common_result}"
+            )
 
             # If we have a strong majority (more than 50% of successful solutions)
             total_successful = sum(
@@ -118,7 +123,7 @@ class AoCRunner:
             if count > total_successful / 2:
                 # Wait for leaderboard to fill
                 while not self.aoc_client.global_leaderboard_full(year, day):
-                    print(
+                    logger.info(
                         "Global leaderboard not yet full. Checking again in 30 seconds..."
                     )
                     time.sleep(30)
@@ -127,7 +132,9 @@ class AoCRunner:
                 result = self.aoc_client.submit_solution(
                     year, day, part, most_common_result
                 )
-                print(f"Submission result: {result['status']} - {result['message']}")
+                logger.info(
+                    f"Submission result: {result['status']} - {result['message']}"
+                )
 
                 if result["status"] == "ok":
                     # Get the successful solution and save it
@@ -141,16 +148,16 @@ class AoCRunner:
                 # Handle wait time
                 wait_time = result["wait_time"]
                 if wait_time > 0:
-                    print(f"Waiting {wait_time} seconds before next attempt...")
+                    logger.info(f"Waiting {wait_time} seconds before next attempt...")
                     time.sleep(wait_time)
             else:
-                print("No clear majority solution found")
+                logger.info("No clear majority solution found")
 
             if attempt < max_attempts:
-                print("Waiting 60 seconds before next full attempt...")
+                logger.info("Waiting 60 seconds before next full attempt...")
                 time.sleep(60)
 
-        print(f"Failed to solve Part {part} after {max_attempts} attempts.")
+        logger.info(f"Failed to solve Part {part} after {max_attempts} attempts.")
 
     def run(self):
         """Main execution flow."""
@@ -162,7 +169,7 @@ class AoCRunner:
             challenge_part1 = self.aoc_client.fetch_challenge(year, day)
             self.solve_part(year, day, 1, challenge_part1)
         else:
-            print("Part 1 already solved. Skipping...")
+            logger.info("Part 1 already solved. Skipping...")
 
         # Check if part 2 is available before solving
         full_challenge = self.aoc_client.fetch_challenge(year, day)
@@ -170,9 +177,9 @@ class AoCRunner:
             if not self.has_solved_part(year, day, 2):
                 self.solve_part(year, day, 2, full_challenge)
             else:
-                print("Part 2 already solved. Skipping...")
+                logger.info("Part 2 already solved. Skipping...")
         else:
-            print("Part 2 is not yet available.")
+            logger.info("Part 2 is not yet available.")
 
 
 def main():
