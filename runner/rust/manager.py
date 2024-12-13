@@ -134,8 +134,6 @@ class RustManager:
         day_str = f"day{day:02d}_part{part}"
         cwd = "../rust"
 
-        # Clean step (optional)
-        subprocess.run(["cargo", "clean"], check=True, cwd=cwd)
         subprocess.run(["cargo", "fmt"], check=True, cwd=cwd)
 
         # Build step
@@ -143,23 +141,47 @@ class RustManager:
             ["cargo", "build", "--release"], capture_output=True, text=True, cwd=cwd
         )
         if build_result.returncode != 0:
-            # Return the build error
-            return build_result.stderr.strip()
+            # Combine stderr and stdout for complete error message
+            error_output = build_result.stderr.strip()
+            # Extract the relevant error message
+            if "error[" in error_output:
+                # Get everything from the first error to the "For more information" line
+                error_lines = error_output.split("\n")
+                relevant_error = []
+                capture = False
+                for line in error_lines:
+                    if line.startswith("error["):
+                        capture = True
+                    if capture:
+                        if line.startswith("For more information"):
+                            break
+                        relevant_error.append(line)
+                return "BUILD ERROR: " + "\n".join(relevant_error)
+            return "BUILD ERROR: " + error_output
 
         # Run step
-        run_result = subprocess.run(
-            [
-                "cargo",
-                "run",
-                "--release",
-                "-p",
-                "advent-of-code-2024",
-                "--bin",
-                day_str,
-            ],
-            capture_output=True,
-            text=True,
-            cwd=cwd,
-        )
+        try:
+            run_result = subprocess.run(
+                [
+                    "cargo",
+                    "run",
+                    "--release",
+                    "-p",
+                    "advent-of-code-2024",
+                    "--bin",
+                    day_str,
+                ],
+                capture_output=True,
+                text=True,
+                cwd=cwd,
+                timeout=180,  # Timeout after 3 minutes
+            )
+
+            if run_result.returncode != 0:
+                error_output = run_result.stderr.strip()
+                return "EXECUTION ERROR: " + error_output
+
+        except subprocess.TimeoutExpired:
+            return "EXECUTION ERROR: Process timed out after 3 minutes"
 
         return run_result.stdout.strip()
