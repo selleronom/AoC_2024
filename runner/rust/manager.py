@@ -86,8 +86,10 @@ class RustManager:
         dependencies = cargo_data.get("dependencies", {})
         new_deps = helpers.extract_dependencies(solution)
         for dep, version in new_deps.items():
-            if dep not in dependencies:
-                dependencies[dep] = version
+            # Convert underscores to hyphens in dependency names
+            dep_name = dep.replace('_', '-')
+            if dep_name not in dependencies:
+                dependencies[dep_name] = version
 
         cargo_data["dependencies"] = dependencies
 
