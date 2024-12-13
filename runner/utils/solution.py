@@ -15,6 +15,8 @@ class SolutionSet:
         self.solutions = []
 
     def add_solution(self, model: str, code: str, result: Optional[str] = None):
+        if result == "0":
+            result = None  # Consider result "0" as invalid
         self.solutions.append(Solution(model, code, result))
 
     def get_most_common_result(self) -> tuple[Optional[str], int]:
