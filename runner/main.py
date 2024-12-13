@@ -22,7 +22,7 @@ class AoCRunner:
         self.claude_client = ClaudeClient(os.environ.get("ANTHROPIC_API_KEY"))
         self.rust_manager = RustManager("../rust")
         self.results_dir = "results"
-        self.models = ["o1-mini", "claude-3-opus-20240229", "gpt-4", "o1-preview"]
+        self.models = ["claude-3-5-sonnet-20241022", "o1-mini"]
         self.attempts_per_model = 3
 
         if not os.path.exists(self.results_dir):
@@ -50,20 +50,58 @@ class AoCRunner:
                     # Create temporary files and update Rust project
                     self.rust_manager.create_day_directory(day, part)
                     self.rust_manager.update_solution(day, part, solution_code)
+                    self.rust_manager.reset_cargo_toml()
                     self.rust_manager.update_cargo_toml(day, part, solution_code)
 
                     # Execute solution
-                    try:
-                        result = self.rust_manager.execute_solution(day, part)
-                        solution_set.add_solution(model, solution_code, result)
-                        logger.info(
-                            f"Model {model} (attempt {attempt + 1}) produced result: {result}"
-                        )
-                    except Exception as e:
-                        logger.info(
-                            f"Execution failed for {model} (attempt {attempt + 1}): {e}"
-                        )
-                        solution_set.add_solution(model, solution_code, None)
+                    while True:  # Keep trying until we get a successful build or hit execution error
+                        try:
+                            result = self.rust_manager.execute_solution(day, part)
+                            # If result contains build error or execution error
+                            if isinstance(result, str) and (
+                                result.startswith("BUILD ERROR:")
+                                or result.startswith("EXECUTION ERROR:")
+                            ):
+                                logger.info(result)
+                                # Extract the error message
+                                error_message = result.replace(
+                                    "BUILD ERROR: ", ""
+                                ).replace("EXECUTION ERROR: ", "")
+                                # Get fixed solution using the error message
+                                if model.startswith("claude"):
+                                    solution_code = self.claude_client.get_solution(
+                                        challenge=f"You already given me the code for the challenge but it had issues, this is the code:\n\n {solution_code}\n\nThe error is:\n{error_message}",
+                                        part=part,
+                                        model=model,
+                                    )
+                                else:
+                                    solution_code = self.openai_client.get_solution(
+                                        challenge=f"You already given me the code for the challenge but it had issues, this is the code:\n\n {solution_code}\n\nThe error is:\n{error_message}",
+                                        part=part,
+                                        model=model,
+                                    )
+                                # Update solution and try again
+                                self.rust_manager.update_solution(
+                                    day, part, solution_code
+                                )
+                                self.rust_manager.reset_cargo_toml()
+                                self.rust_manager.update_cargo_toml(
+                                    day, part, solution_code
+                                )
+                                continue
+
+                            solution_set.add_solution(model, solution_code, result)
+                            logger.info(
+                                f"Model {model} (attempt {attempt + 1}) produced result: {result}"
+                            )
+                            break  # Success - exit the while loop
+
+                        except Exception as e:
+                            logger.info(
+                                f"Execution failed for {model} (attempt {attempt + 1}): {e}"
+                            )
+                            solution_set.add_solution(model, solution_code, None)
+                            break  # Exit the while loop on execution error
 
                 except Exception as e:
                     logger.info(
@@ -97,9 +135,6 @@ class AoCRunner:
             attempt += 1
             logger.info(f"Attempt {attempt}/{max_attempts} to solve Part {part}")
 
-            # Reset Cargo.toml before each full attempt
-            self.rust_manager.reset_cargo_toml()
-
             # Generate and test solutions from all models
             solution_set = self.generate_and_test_solutions(
                 year, day, part, challenge_text
@@ -116,11 +151,9 @@ class AoCRunner:
                 f"Most common result ({count} occurrences): {most_common_result}"
             )
 
-            # If we have a strong majority (more than 50% of successful solutions)
-            total_successful = sum(
-                1 for s in solution_set.solutions if s.result is not None
-            )
-            if count > total_successful / 2:
+            # If at least two results are the same, submit the most common one
+
+            if count >= 2:
                 # Wait for leaderboard to fill
                 while not self.aoc_client.global_leaderboard_full(year, day):
                     logger.info(
