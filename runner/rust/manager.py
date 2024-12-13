@@ -140,8 +140,8 @@ class RustManager:
             ["cargo", "build", "--release"], capture_output=True, text=True, cwd=cwd
         )
         if build_result.returncode != 0:
-            # Raise an exception instead of returning an error message
-            raise Exception(f"Build failed: {build_result.stderr}")
+            # Return the build error
+            return build_result.stderr.strip()
 
         # Run step
         run_result = subprocess.run(
