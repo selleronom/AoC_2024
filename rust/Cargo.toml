@@ -74,6 +74,11 @@ path = "src/bin/day11_part2.rs"
 name = "day12_part2"
 path = "src/bin/day12_part2.rs"
 
+[[bin]]
+name = "day13_part2"
+path = "src/bin/day13_part2.rs"
+
+
 [package]
 name = "advent-of-code-2024"
 version = "0.1.0"
@@ -107,4 +112,7 @@ version = "*"
 version = "*"
 
 [dependencies.num-traits]
+version = "*"
+
+[dependencies.num-integer]
 version = "*"
