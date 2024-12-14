@@ -1,4 +1,3 @@
-use num_integer::gcd;
 
 pub fn solve(input: &str) -> i64 {
     let mut total_tokens = 0;
@@ -40,8 +39,8 @@ fn solve_machine(ax: i64, ay: i64, bx: i64, by: i64, px: i64, py: i64) -> Option
         return None;
     }
 
-    let mut a = ((px * by - py * bx) as f64 / det as f64).round() as i64;
-    let mut b = ((py * ax - px * ay) as f64 / det as f64).round() as i64;
+    let a = ((px * by - py * bx) as f64 / det as f64).round() as i64;
+    let b = ((py * ax - px * ay) as f64 / det as f64).round() as i64;
 
     if a * ax + b * bx != px || a * ay + b * by != py {
         return None;

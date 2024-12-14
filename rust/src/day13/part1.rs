@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 
 pub fn solve(input: &str) -> i32 {
     let mut total_tokens = 0;
