@@ -1,4 +1,3 @@
-
 #[derive(Debug, Clone)]
 struct Robot {
     pos: (i64, i64),
