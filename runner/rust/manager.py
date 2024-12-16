@@ -134,6 +134,8 @@ class RustManager:
         day_str = f"day{day:02d}_part{part}"
         cwd = "../rust"
 
+        # Clean and format code
+        subprocess.run(["cargo", "clean"], check=True, cwd=cwd)
         subprocess.run(["cargo", "fmt"], check=True, cwd=cwd)
 
         # Build step
@@ -165,7 +167,6 @@ class RustManager:
                 [
                     "cargo",
                     "run",
-                    "--release",
                     "-p",
                     "advent-of-code-2024",
                     "--bin",
