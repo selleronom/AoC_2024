@@ -54,7 +54,8 @@ class AoCRunner:
                     self.rust_manager.update_cargo_toml(day, part, solution_code)
 
                     # Execute solution
-                    while True:  # Keep trying until we get a successful build or hit execution error
+                    max_retries = 3
+                    for retry in range(max_retries):
                         try:
                             result = self.rust_manager.execute_solution(day, part)
                             # If result contains build error or execution error
@@ -70,13 +71,13 @@ class AoCRunner:
                                 # Get fixed solution using the error message
                                 if model.startswith("claude"):
                                     solution_code = self.claude_client.get_solution(
-                                        challenge=f"You already given me the code for the challenge but it had issues, this is the code:\n\n {solution_code}\n\nThe error is:\n{error_message}",
+                                        challenge=f"You already given me the code for the challenge but it had issues, this is the code:\n\n{solution_code}\n\nThe error is:\n{error_message}",
                                         part=part,
                                         model=model,
                                     )
                                 else:
                                     solution_code = self.openai_client.get_solution(
-                                        challenge=f"You already given me the code for the challenge but it had issues, this is the code:\n\n {solution_code}\n\nThe error is:\n{error_message}",
+                                        challenge=f"You already given me the code for the challenge but it had issues, this is the code:\n\n{solution_code}\n\nThe error is:\n{error_message}",
                                         part=part,
                                         model=model,
                                     )
@@ -88,27 +89,29 @@ class AoCRunner:
                                 self.rust_manager.update_cargo_toml(
                                     day, part, solution_code
                                 )
-                                continue
-
-                            solution_set.add_solution(model, solution_code, result)
-                            logger.info(
-                                f"Model {model} (attempt {attempt + 1}) produced result: {result}"
-                            )
-                            break  # Success - exit the while loop
-
+                            else:
+                                # Successful execution
+                                solution_set.add_solution(model, solution_code, result)
+                                logger.info(
+                                    f"Model {model} (attempt {attempt + 1}) produced result: {result}"
+                                )
+                                break  # Success - exit retry loop
                         except Exception as e:
                             logger.info(
                                 f"Execution failed for {model} (attempt {attempt + 1}): {e}"
                             )
                             solution_set.add_solution(model, solution_code, None)
-                            break  # Exit the while loop on execution error
+                            break  # Exit retry loop on execution error
+                    else:
+                        logger.info(
+                            f"Maximum retries reached for {model} (attempt {attempt + 1})"
+                        )
 
                 except Exception as e:
                     logger.info(
                         f"Failed to generate solution with {model} (attempt {attempt + 1}): {e}"
                     )
                     continue
-
         return solution_set
 
     def has_solved_part(self, year: int, day: int, part: int) -> bool:
