@@ -1,4 +1,3 @@
-
 pub fn solve(input: &str) -> String {
     let mut lines = input.lines();
     let a = lines
