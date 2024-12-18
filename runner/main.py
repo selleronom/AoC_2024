@@ -29,7 +29,12 @@ class AoCRunner:
             os.makedirs(self.results_dir)
 
     def generate_and_test_solutions(
-        self, year: int, day: int, part: int, challenge_text: str
+        self,
+        year: int,
+        day: int,
+        part: int,
+        challenge_text: str,
+        previous_solution_code: str = None,
     ) -> SolutionSet:
         """Generate and test multiple solutions from each model"""
         solution_set = SolutionSet()
@@ -37,14 +42,18 @@ class AoCRunner:
         for model in self.models:
             for attempt in range(self.attempts_per_model):
                 try:
+                    if previous_solution_code:
+                        logger.info("Using previous solution code")
+                        prompt = f"Here is the code that successfully solved part {part - 1}:\n\n{previous_solution_code}\n\nSolve part {part} of this Advent of Code challenge in Rust:\n\n{challenge_text}"
+                    else:
+                        prompt = f"Solve part {part} of this Advent of Code challenge in Rust:\n\n{challenge_text}"
+
                     # Get solution from AI model
                     if model.startswith("claude"):
-                        solution_code = self.claude_client.get_solution(
-                            challenge_text, part
-                        )
+                        solution_code = self.claude_client.get_solution(prompt, part)
                     else:
                         solution_code = self.openai_client.get_solution(
-                            challenge_text, part, model
+                            prompt, part, model
                         )
 
                     # Create temporary files and update Rust project
@@ -127,7 +136,14 @@ class AoCRunner:
         ) as file:
             file.write("success")
 
-    def solve_part(self, year: int, day: int, part: int, challenge_text: str):
+    def solve_part(
+        self,
+        year: int,
+        day: int,
+        part: int,
+        challenge_text: str,
+        previous_solution_code: str = None,
+    ):
         """Solve and submit a single part of the challenge."""
         logger.info(f"Solving part {part}...")
 
@@ -140,7 +156,7 @@ class AoCRunner:
 
             # Generate and test solutions from all models
             solution_set = self.generate_and_test_solutions(
-                year, day, part, challenge_text
+                year, day, part, challenge_text, previous_solution_code
             )
 
             # Get most common result
@@ -160,9 +176,9 @@ class AoCRunner:
                 # Wait for leaderboard to fill
                 while not self.aoc_client.global_leaderboard_full(year, day):
                     logger.info(
-                        "Global leaderboard not yet full. Checking again in 30 seconds..."
+                        "Global leaderboard not yet full. Checking again in 15 seconds..."
                     )
-                    time.sleep(30)
+                    time.sleep(15)
 
                 # Submit the most common result
                 result = self.aoc_client.submit_solution(
@@ -179,7 +195,7 @@ class AoCRunner:
                     )
                     self.rust_manager.update_solution(day, part, winning_solution.code)
                     self.mark_part_as_solved(year, day, part)
-                    return
+                    return winning_solution
 
                 # Handle wait time
                 wait_time = result["wait_time"]
@@ -203,15 +219,25 @@ class AoCRunner:
         # Solve Part 1 if not already solved
         if not self.has_solved_part(year, day, 1):
             challenge_part1 = self.aoc_client.fetch_challenge(year, day)
-            self.solve_part(year, day, 1, challenge_part1)
+            winning_solution = self.solve_part(year, day, 1, challenge_part1)
+            winning_solution_code = winning_solution.code
         else:
             logger.info("Part 1 already solved. Skipping...")
+            # Read Part 1 solution code from Rust file
+            winning_solution_code = self.rust_manager.read_solution(day, 1)
 
         # Check if part 2 is available before solving
         full_challenge = self.aoc_client.fetch_challenge(year, day)
         if self.aoc_client.has_part_two(full_challenge):
             if not self.has_solved_part(year, day, 2):
-                self.solve_part(year, day, 2, full_challenge)
+                # Pass the Part 1 solution code to solve_part
+                self.solve_part(
+                    year,
+                    day,
+                    2,
+                    full_challenge,
+                    previous_solution_code=winning_solution_code,
+                )
             else:
                 logger.info("Part 2 already solved. Skipping...")
         else:
