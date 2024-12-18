@@ -1,4 +1,3 @@
-use std::error::Error;
 
 pub fn solve(input: &str) -> String {
     let mut lines = input.lines();

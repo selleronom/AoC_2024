@@ -1,4 +1,3 @@
-
 pub fn solve(input: &str) -> i64 {
     let mut total_tokens = 0;
 
