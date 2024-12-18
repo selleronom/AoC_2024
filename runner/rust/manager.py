@@ -76,6 +76,14 @@ class RustManager:
         with open(mod_path, "w") as f:
             f.write(mod_content)
 
+    def read_solution(self, day: int, part: int) -> str:
+        """Read Rust solution code."""
+        day_str = f"day{day:02d}"
+        file_path = f"../rust/src/{day_str}/part{part}.rs"
+        with open(file_path, "r") as f:
+            code = f.read()
+        return code
+
     def update_cargo_toml(self, day: int, part: int, solution: str):
         """Update Cargo.toml with new dependencies and binaries."""
         day_str = f"{day:02d}"
@@ -137,6 +145,7 @@ class RustManager:
         # Clean and format code
         subprocess.run(["cargo", "clean"], check=True, cwd=cwd)
         subprocess.run(["cargo", "fmt"], check=True, cwd=cwd)
+        subprocess.run(["cargo", "fix", "--allow-dirty"], check=True, cwd=cwd)
 
         # Build step
         build_result = subprocess.run(
